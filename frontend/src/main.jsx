@@ -14,7 +14,7 @@ class ErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error("WR JobTracker Error caught by boundary:", error, errorInfo);
+    console.error("WR JobTracker error caught by boundary:", error, errorInfo);
   }
 
   render() {
@@ -57,12 +57,12 @@ class ErrorBoundary extends Component {
               background: '#2563eb',
               color: '#ffffff',
               border: 'none',
-              borderRadius: '9999px',
+              borderRadius: '6px',
               cursor: 'pointer',
-              fontWeight: 700
+              fontWeight: 600
             }}
           >
-            Clear Cache &amp; Reload Application
+            Clear Cache and Reload
           </button>
         </div>
       );

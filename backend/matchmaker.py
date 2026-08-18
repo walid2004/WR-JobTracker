@@ -39,11 +39,9 @@ def normalize_company_name(name: Optional[str]) -> str:
     return "-".join(tokens)
 
 def normalize_job_title_tokens(title: Optional[str]) -> set:
-    """Extracts meaningful lowercase tokens from a job title to compare roles."""
     if not title:
         return set()
     clean = str(title).lower()
-    # Remove noise patterns like (m/w/d), (f/m/d), brackets
     clean = re.sub(r'\(m/w/d\)|\(f/m/d\)|m/w/d|f/m/d|\(all genders\)', '', clean)
     clean = re.sub(r'[^a-z0-9\s]', ' ', clean)
     noise_title_words = {'the', 'a', 'an', 'in', 'at', 'for', 'of', 'and', 'bereich', 'im', 'und', 'position', 'role'}
@@ -51,21 +49,15 @@ def normalize_job_title_tokens(title: Optional[str]) -> set:
     return tokens
 
 def are_job_roles_similar(title_a: Optional[str], title_b: Optional[str]) -> bool:
-    """
-    Checks if two job titles refer to the same position or two distinct job applications.
-    e.g. 'Backend Engineer' vs 'Frontend Engineer' -> FALSE (Distinct jobs)
-    e.g. 'Software Engineer' vs 'Software Engineer (Working Student)' -> TRUE (Same job)
-    """
     tokens_a = normalize_job_title_tokens(title_a)
     tokens_b = normalize_job_title_tokens(title_b)
 
     if not tokens_a or not tokens_b:
-        return True # If one is missing or generic, assume potential match
+        return True
 
     intersection = tokens_a.intersection(tokens_b)
     union = tokens_a.union(tokens_b)
 
-    # If key specialization words differ, they are distinct roles!
     distinguishing_keywords = {
         'frontend', 'backend', 'fullstack', 'mobile', 'ios', 'android', 
         'data', 'ai', 'ml', 'machine', 'qa', 'test', 'security', 'devops', 
@@ -76,16 +68,12 @@ def are_job_roles_similar(title_a: Optional[str], title_b: Optional[str]) -> boo
     special_b = tokens_b.intersection(distinguishing_keywords)
 
     if special_a and special_b and special_a != special_b:
-        return False # Distinct specialized roles at the same company!
+        return False
 
     jaccard_sim = len(intersection) / len(union) if union else 0
     return jaccard_sim >= 0.35 or len(intersection) >= 2
 
 def find_matching_app_for_company_and_role(company_slug: str, new_job_title: str) -> Optional[int]:
-    """
-    Searches existing applications for this company and verifies if any card matches the same job role.
-    If titles are distinct, returns None so a separate card is created!
-    """
     conn = db.get_db_connection()
     cursor = conn.cursor()
     cursor.execute("""
@@ -107,10 +95,6 @@ def process_and_match_email(
     raw_email: RawEmailInput, 
     extracted: ExtractedJobDetails
 ) -> ProcessEmailResponse:
-    """
-    Core Matchmaker: Matches email to existing application or creates distinct card.
-    Accurately supports multiple different jobs applied at the same company.
-    """
     if not extracted.is_job_related or extracted.status == "NOT_JOB_RELATED":
         return ProcessEmailResponse(
             success=True,
@@ -128,25 +112,21 @@ def process_and_match_email(
     app_id: Optional[int] = None
     match_reason = ""
 
-    # Strategy 1: Match by Email Thread ID (100% deterministic)
     if raw_email.email_thread_id:
         app_id = db.find_app_by_thread_id(raw_email.email_thread_id)
         if app_id:
             match_reason = f"Matched application #{app_id} via Thread ID"
 
-    # Strategy 2: Match by Job Reference ID (100% deterministic)
     if not app_id and extracted.job_reference_id:
         app_id = db.find_app_by_reference_id(str(extracted.job_reference_id).strip())
         if app_id:
             match_reason = f"Matched application #{app_id} via Reference ID: {extracted.job_reference_id}"
 
-    # Strategy 3: Match by Company Slug + Job Title Compatibility
     if not app_id and company_slug and company_slug != "general-career":
         app_id = find_matching_app_for_company_and_role(company_slug, safe_job_title)
         if app_id:
             match_reason = f"Matched application #{app_id} for '{safe_company_name}' ({safe_job_title})"
 
-    # Handle Case A: Update Existing Application Card
     if app_id:
         update_fields = {
             "status": safe_status,
@@ -183,7 +163,6 @@ def process_and_match_email(
             extraction=extracted
         )
 
-    # Handle Case B: Create Brand-New Application Card (Distinct Job!)
     else:
         new_app_id = db.create_application(
             company_name=safe_company_name,

@@ -1,84 +1,237 @@
-# 💼 WR JobTracker
+# WR JobTracker
 
-> **Privacy-First, AI-Powered Job Application Tracking System.**  
-> Automatically parses, organizes, and tracks your job applications directly from your inbox using **Local GPU Models (Ollama)** or **Cloud AI APIs** (GitHub Models, OpenAI, Groq, Mistral).
-
----
-
-## ✨ Features
-
-- 📬 **Live Gmail / IMAP Inbox Sync**: Automatically scans and monitors candidate confirmation emails, coding assessments, interview invitations, offers, and rejections.
-- 🧠 **Dual AI Extraction Engine**:
-  - **Local Offline GPU Mode**: Powered by Ollama (`qwen2.5:3b`, `qwen3:8b`, etc.) running 100% locally on your machine with zero API costs.
-  - **Cloud / OpenAI-Compatible Mode**: 1-click presets for **GitHub Models**, **OpenAI ChatGPT**, **Groq**, **Mistral AI**, and **OpenRouter** with live connection handshake testing.
-- 🎯 **ATS Entity & Stage Extraction**: Automatically extracts company names, job titles, requisition IDs, deadline dates, and action items with structured JSON schema validation.
-- 📊 **Company Intelligence & Analytics**:
-  - Track response rates, average response times, and historic application logs across individual companies.
-  - Kanban board with stage management (`Applied`, `Under Review`, `Interviews & Assessments`, `Offers`, `Rejected`).
-- 🎨 **Disciplined, Human-Crafted SaaS UI**:
-  - Built with clean geometric typography, high density, and subtle micro-states.
-  - Full **Light Mode (Default)** and **Dark Mode** support.
-  - Instant `/` keyboard shortcut for search.
-  - Live auto-sync countdown timer.
+Local-first, AI-driven Applicant Tracking System (ATS) that synchronizes with your email inbox over IMAP, extracts structured job application metadata using local or cloud LLMs, and organizes applications across an automated state machine.
 
 ---
 
-## 🛠️ Architecture
+## System Architecture
+
+### High-Level Ingestion and Processing Pipeline
 
 ```
-WR-JobTracker/
-├── backend/                  # FastAPI Application
-│   ├── database.py           # SQLite persistence layer
-│   ├── email_fetcher.py      # IMAP SSL client & email synchronizer
-│   ├── extractor.py          # Dual AI parser (Ollama + Cloud API)
-│   ├── matchmaker.py         # Application correlation & deduplication
-│   ├── models.py             # Pydantic data schemas
-│   ├── main.py               # REST API endpoints & WebSockets/polling
-│   └── requirements.txt      # Python dependencies
-│
-└── frontend/                 # React 19 + Vite Frontend
-    ├── src/
-    │   ├── App.jsx           # Main Dashboard & Kanban Board
-    │   ├── index.css         # High-density SaaS design system
-    │   └── main.jsx          # React DOM root & ErrorBoundary
-    ├── index.html
-    └── package.json
++-------------------------------------------------------------------------+
+|                              EMAIL INBOX                                |
+|           (Gmail, Outlook, Custom IMAP via TLS / SSL Port 993)          |
++-------------------------------------------------------------------------+
+                                     |
+                                     | [IMAP Fetcher Worker]
+                                     v
++-------------------------------------------------------------------------+
+|                       PRE-PROCESSING & FILTERING                        |
+|  - MIME Header Decoding                                                 |
+|  - HTML to Plaintext Conversion                                         |
+|  - Negative Filter: Newsletters, Digests, Job Alerts (LinkedIn/Indeed)  |
+|  - Positive Keyword Matcher (Candidate, Interview, Offer, Status)      |
+|  - Message-ID / Subject Deduplication Check                             |
++-------------------------------------------------------------------------+
+                                     |
+                                     | [Candidate Email Body]
+                                     v
++-------------------------------------------------------------------------+
+|                         DUAL AI EXTRACTION ENGINE                       |
+|                                                                         |
+|  [Provider A: Local Ollama]               [Provider B: Cloud API]       |
+|  - Model: qwen3:8b / qwen2.5:3b          - Endpoints: GitHub Models,    |
+|  - Endpoint: http://localhost:11434/api/chat          OpenAI, Groq,     |
+|  - Strict JSON Schema constraint                      Mistral, etc.     |
+|  - 100% Offline & Private                - JSON Object response_format  |
++-------------------------------------------------------------------------+
+                                     |
+                                     | [Structured JSON Output]
+                                     v
++-------------------------------------------------------------------------+
+|                        APPLICATION MATCHMAKER                           |
+|  - Strategy 1: Thread ID & References Header Match                      |
+|  - Strategy 2: Job Requisition / Reference Code Match                   |
+|  - Strategy 3: Normalized Company Slug + Role Jaccard Similarity        |
+|                                                                         |
+|  [Existing Application Matched]            [No Previous Match Found]    |
+|  -> Update Card Stage & Action Items       -> Create New Application    |
+|  -> Append Event to Audit Timeline         -> Create Initial Event      |
++-------------------------------------------------------------------------+
+                                     |
+                                     v
++-------------------------------------------------------------------------+
+|                         SQLITE DATABASE ENGINE                          |
+|  - applications (id, company, role, slug, status, deadline, dates)      |
+|  - email_events (id, app_id, message_id, thread_id, raw_summary)       |
+|  - email_accounts (id, email, imap_server, password_encrypted, status)  |
+|  - app_settings (key, value)                                            |
++-------------------------------------------------------------------------+
+                                     ^
+                                     | REST API (FastAPI)
+                                     v
++-------------------------------------------------------------------------+
+|                            REACT FRONTEND                               |
+|  - Kanban Board (Applied, Review, Assessment/Interview, Offer, Reject)  |
+|  - Real-time Sync Progress & Polling Tracker                            |
+|  - Company Intelligence (Historical Applications, Response Rates)       |
+|  - Dual AI Model Switcher & Live Handshake Verification Modal           |
+|  - Light / Dark Architectural Surface Tokens                            |
++-------------------------------------------------------------------------+
 ```
 
 ---
 
-## 🚀 Quick Start
+## Technical Specifications
 
-### 1. Prerequisites
-- **Python 3.10+**
-- **Node.js 18+** & `npm`
-- *(Optional for Local AI)*: [Ollama](https://ollama.com/) with `qwen2.5:3b` or `qwen3:8b` (`ollama run qwen2.5:3b`)
+### Backend Stack
+- **Framework**: FastAPI (Python 3.10+)
+- **Server**: Uvicorn ASGI
+- **Database**: SQLite3 with indexing on company slug, job reference ID, and email thread IDs
+- **Validation**: Pydantic v2
+- **Protocol**: IMAP4 over SSL
+
+### Frontend Stack
+- **Library**: React 19
+- **Build Tool**: Vite 8
+- **Styling**: Pure CSS Design System (Custom variables, zero utility overhead)
+- **Icons**: Lucide React
+
+---
+
+## Requirements
+
+### Software Prerequisites
+1. **Python**: Version `3.10` or higher
+2. **Node.js**: Version `18.0.0` or higher with `npm`
+3. **Git**: Installed and available in PATH
+
+### AI Inference (Select at least one):
+- **Option 1 (Local GPU / CPU - Recommended)**:
+  - [Ollama](https://ollama.com/) running locally (`http://localhost:11434`).
+  - Model: `qwen3:8b`, `qwen2.5:3b`, `llama3.1:8b`, or `mistral`.
+- **Option 2 (Cloud API)**:
+  - API Token from any OpenAI-compatible provider:
+    - GitHub Models Personal Access Token (Free tier available)
+    - OpenAI API Key
+    - Groq Cloud API Key
+    - Mistral AI API Key
+    - OpenRouter API Key
+
+### Email Provider (For Live Sync):
+- Gmail, Outlook, or custom IMAP provider.
+- For Gmail: A **16-character Google App Password** generated under Google Account Security (Requires 2-Step Verification enabled).
+
+---
+
+## Installation & Setup
+
+### 1. Clone the Repository
+```bash
+git clone https://github.com/walid2004/WR-JobTracker.git
+cd WR-JobTracker
+```
 
 ### 2. Backend Setup
 ```bash
 cd backend
+python -m venv .venv
+
+# On Windows (PowerShell):
+.venv\Scripts\Activate.ps1
+
+# On Linux / macOS:
+source .venv/bin/activate
+
 pip install -r requirements.txt
+```
+
+Start the FastAPI backend server:
+```bash
 uvicorn main:app --host 127.0.0.1 --port 8000 --reload
 ```
-The backend API will be available at `http://127.0.0.1:8000`.
+The API documentation and Swagger UI will be available at `http://127.0.0.1:8000/docs`.
 
 ### 3. Frontend Setup
+Open a new terminal window:
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
-The frontend dashboard will be available at `http://localhost:5173`.
+The frontend interface will be available at `http://localhost:5173`.
 
 ---
 
-## 🔒 Security & Privacy
+## Configuration
 
-- **Zero Third-Party Data Leakage**: In local mode, email contents are processed solely inside your local GPU/RAM.
-- **Local Credentials**: IMAP App Passwords and API tokens are stored strictly in your local SQLite database on your machine and are never transmitted to external telemetry.
-- **Protected Secrets**: SQLite databases and logs are strictly ignored by `.gitignore`.
+### Connecting Email Inbox (IMAP)
+1. Open the application at `http://localhost:5173`.
+2. Click **Connect Inbox** in the upper right.
+3. Provide your email credentials:
+   - **Email Address**: Your email (e.g., `user@gmail.com`)
+   - **IMAP Server**: `imap.gmail.com` (Default for Gmail)
+   - **Password**: Your 16-character App Password (e.g., `abcd efgh ijkl mnop`)
+4. Click **Test Connection** to verify handshake, then click **Connect Account**.
+
+### Configuring the AI Engine
+1. Click the **Settings** icon in the header.
+2. Select your AI provider:
+   - **Local GPU (Ollama)**: Select any downloaded Ollama model from the dropdown.
+   - **Cloud API / GitHub Models**: Select a preset (GitHub Models, OpenAI, Groq, Mistral, OpenRouter) or enter a custom endpoint, paste your API token, and click **Test Connection**.
+3. Set your preferred **Scan Depth** (number of recent emails to inspect per sync) and **Auto-Sync Interval**.
 
 ---
 
-## 📄 License
-MIT License. Created by [walid2004](https://github.com/walid2004).
+## Data Schema & Deduplication Logic
+
+### Structured JSON Extraction Schema
+Every candidate email is parsed into this schema:
+```json
+{
+  "is_job_related": true,
+  "company_name": "Spotify",
+  "job_title": "Frontend Engineer",
+  "job_reference_id": "REQ-10492",
+  "status": "INTERVIEW_INVITED",
+  "summary": "Invitation to 45-minute technical screen next Tuesday.",
+  "action_required": "Reply with availability for technical screen.",
+  "next_step_deadline": "2026-08-25T00:00:00Z"
+}
+```
+
+### Application Matching Rules
+When a new email is processed, the matchmaker resolves the target application card using three sequential strategies:
+1. **Thread ID Match**: Resolves against `In-Reply-To` and `References` RFC822 headers.
+2. **Requisition ID Match**: Exact match on extracted job requisition or reference code.
+3. **Company Slug + Role Match**: Normalizes company name into a canonical slug (e.g. `Bayerische Motoren Werke` -> `bmw`) and calculates Jaccard token overlap between job titles to differentiate separate roles at the same company (e.g., `Frontend Engineer` vs `Backend Engineer`).
+
+---
+
+## API Endpoints
+
+### Applications
+- `GET /api/applications` - Retrieve all tracked application cards with latest email counts and logo URLs.
+- `GET /api/applications/{id}` - Retrieve detailed card with complete email event history and company intelligence.
+- `POST /api/applications` - Manually create an application card.
+- `PATCH /api/applications/{id}` - Update application card fields (status, title, notes, deadlines).
+- `DELETE /api/applications/{id}` - Delete application card and associated event history.
+
+### Email & Sync
+- `POST /api/email/test-connection` - Test IMAP credentials without persisting.
+- `POST /api/email/connect` - Validate and persist IMAP credentials in local SQLite database.
+- `POST /api/email/disconnect` - Clear active email account credentials.
+- `POST /api/sync-start` - Trigger asynchronous inbox synchronization worker.
+- `GET /api/sync-progress` - Poll current synchronization state and metrics.
+- `POST /api/process-email` - Process a single raw email payload through the parser.
+
+### Models & Settings
+- `GET /api/models` - List local Ollama models and active extraction model.
+- `POST /api/models/test-custom-api` - Test endpoint connectivity and response format for cloud AI models.
+- `GET /api/settings` - Retrieve system configuration (auto-sync, scan depth, active AI provider).
+- `POST /api/settings` - Update system configuration.
+- `GET /api/stats` - Retrieve dashboard analytics and response rate metrics.
+
+---
+
+## Security and Privacy Model
+
+- **Local Storage**: All credentials, tokens, application records, and email event summaries are stored locally in `backend/job_tracker.db`.
+- **Zero External Telemetry**: The application communicates only with your configured IMAP server and selected AI provider.
+- **Git Ignore**: Database files (`*.db`), log files, node modules, and environment configurations are excluded from version control.
+
+---
+
+## License
+MIT License.

@@ -1,7 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, List, Literal
 
-# Valid Job Application Statuses
 ApplicationStatus = Literal[
     "APPLIED",
     "UNDER_REVIEW",
@@ -13,7 +12,6 @@ ApplicationStatus = Literal[
     "ARCHIVED"
 ]
 
-# Schema used for LLM Extraction Output
 class ExtractedJobDetails(BaseModel):
     is_job_related: bool
     company_name: str
@@ -33,7 +31,6 @@ class ExtractedJobDetails(BaseModel):
     action_required: Optional[str] = None
     next_step_deadline: Optional[str] = None
 
-# Request Payload to Process an Incoming Raw Email
 class RawEmailInput(BaseModel):
     sender: str
     subject: str
@@ -43,7 +40,6 @@ class RawEmailInput(BaseModel):
     email_deep_link: Optional[str] = None
     received_at: Optional[str] = None
 
-# Response when an email is processed
 class ProcessEmailResponse(BaseModel):
     success: bool
     is_job_related: bool
@@ -54,7 +50,6 @@ class ProcessEmailResponse(BaseModel):
     message: str
     extraction: Optional[ExtractedJobDetails] = None
 
-# Timeline Event Model
 class TimelineEventResponse(BaseModel):
     id: int
     application_id: int
@@ -68,7 +63,6 @@ class TimelineEventResponse(BaseModel):
     email_deep_link: Optional[str]
     created_at: str
 
-# Application Card Model
 class ApplicationResponse(BaseModel):
     id: int
     company_name: str
@@ -88,7 +82,6 @@ class ApplicationResponse(BaseModel):
     updated_at: str
     timeline: Optional[List[TimelineEventResponse]] = None
 
-# Manual Application Creation Request
 class CreateApplicationRequest(BaseModel):
     company_name: str
     job_title: str
@@ -99,7 +92,6 @@ class CreateApplicationRequest(BaseModel):
     location: Optional[str] = None
     notes: Optional[str] = None
 
-# Application Update Request
 class UpdateApplicationRequest(BaseModel):
     company_name: Optional[str] = None
     job_title: Optional[str] = None

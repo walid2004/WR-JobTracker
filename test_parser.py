@@ -3,15 +3,12 @@ import urllib.request
 import urllib.error
 import sys
 
-# Ensure UTF-8 output encoding on Windows console
 if hasattr(sys.stdout, 'reconfigure'):
     sys.stdout.reconfigure(encoding='utf-8')
 
-# Ollama REST API endpoint
 OLLAMA_URL = "http://localhost:11434/api/chat"
 MODEL_NAME = "qwen3:8b"
 
-# Define the JSON Schema for strict structured output
 JOB_EXTRACTION_SCHEMA = {
     "type": "object",
     "properties": {
@@ -70,14 +67,12 @@ JOB_EXTRACTION_SCHEMA = {
     ]
 }
 
-# 3 Real-World Test Emails
 TEST_EMAILS = [
     {
         "id": "email_01",
         "sender": "career@bmwgroup.com",
         "subject": "Confirmation of your application: Working Student Software Engineering (Ref #DE-89211)",
-        "body": """
-Dear Applicant,
+        "body": """Dear Applicant,
 
 Thank you for your interest in the BMW Group. We hereby confirm the receipt of your application for the position:
 Working Student - Software Engineering (Autonomous Driving Systems)
@@ -87,15 +82,13 @@ Our recruiting team will review your application documents carefully. We will ge
 
 Kind regards,
 BMW Group Recruiting Team
-Munich, Germany
-        """
+Munich, Germany"""
     },
     {
         "id": "email_02",
         "sender": "no-reply@bmwgroup-jobs.com",
         "subject": "Update on your application for Ref #DE-89211 (Working Student)",
-        "body": """
-Dear Candidate,
+        "body": """Dear Candidate,
 
 Thank you for the time and effort you invested in applying for the Working Student - Software Engineering role (Ref #DE-89211) at the BMW Group.
 
@@ -104,15 +97,13 @@ After careful consideration of all applications, we regret to inform you that we
 We wish you all the best in your ongoing career search.
 
 Sincerely,
-BMW Talent Acquisition
-        """
+BMW Talent Acquisition"""
     },
     {
         "id": "email_03",
         "sender": "recruiter@techcorp.io",
         "subject": "TechCorp - Invitation for 1st Round Technical Interview!",
-        "body": """
-Hi Alex,
+        "body": """Hi Alex,
 
 Great news! The engineering team was very impressed by your background. We would like to invite you for a 45-minute Technical Screening interview next week.
 
@@ -122,8 +113,7 @@ Looking forward to speaking with you!
 
 Best,
 Sarah Jenkins
-TechCorp Talent Team
-        """
+TechCorp Talent Team"""
     }
 ]
 
@@ -168,7 +158,7 @@ Body:
             return json.loads(content)
     except urllib.error.URLError as e:
         print(f"[Error] Could not connect to Ollama: {e}")
-        print("Make sure Ollama is running (`ollama serve` or app active).")
+        print("Make sure Ollama is running.")
         return None
     except json.JSONDecodeError as e:
         print(f"[Error] Failed to parse model output JSON: {e}")
@@ -190,7 +180,7 @@ def main():
             print("[FAILED] Could not process email.")
 
     print("\n" + "=" * 70)
-    print("[DONE] Test Complete!")
+    print("[DONE] Test Complete")
 
 if __name__ == "__main__":
     main()

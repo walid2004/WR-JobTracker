@@ -91,7 +91,6 @@ STRICT CLASSIFICATION RULES:
 """
 
 def get_installed_ollama_models() -> List[str]:
-    """Fetches list of all locally downloaded models from Ollama."""
     try:
         req = urllib.request.Request(f"{OLLAMA_BASE}/api/tags")
         with urllib.request.urlopen(req, timeout=3) as resp:
@@ -103,7 +102,6 @@ def get_installed_ollama_models() -> List[str]:
         return [DEFAULT_LOCAL_MODEL]
 
 def get_ai_config() -> Dict[str, Any]:
-    """Returns the current AI provider configuration from DB settings."""
     provider = db.get_setting("ai_provider", "local")
     active_model = db.get_setting("active_model", DEFAULT_LOCAL_MODEL)
     custom_api_url = db.get_setting("custom_api_url", "https://models.inference.ai.azure.com")
@@ -130,7 +128,6 @@ def get_active_model() -> str:
     return config["active_model"]
 
 def normalize_chat_endpoint(url: str) -> str:
-    """Normalizes various user-provided API base URLs to chat/completions endpoint."""
     u = url.strip().rstrip("/")
     if u.endswith("/chat/completions"):
         return u
@@ -139,17 +136,14 @@ def normalize_chat_endpoint(url: str) -> str:
     return f"{u}/chat/completions"
 
 def clean_json_response(raw_text: str) -> str:
-    """Strips Markdown code fences and whitespace from model output."""
     t = raw_text.strip()
     if t.startswith("```"):
-        # Match ```json ... ``` or ``` ... ```
         match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", t)
         if match:
             return match.group(1).strip()
     return t
 
 def extract_via_custom_api(sender: str, subject: str, body: str, config: Dict[str, Any]) -> Optional[ExtractedJobDetails]:
-    """Sends email to custom OpenAI-compatible API endpoint (GitHub Models, OpenAI, Mistral, Groq, etc.)."""
     endpoint = normalize_chat_endpoint(config.get("custom_api_url", "https://models.inference.ai.azure.com"))
     api_key = config.get("custom_api_key", "").strip()
     model = config.get("custom_model_name", "gpt-4o-mini").strip()
@@ -178,7 +172,6 @@ Email Content:
     }
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
-        # Also pass api-key header for Azure / GitHub Models compatibility
         headers["api-key"] = api_key
 
     req = urllib.request.Request(
@@ -208,7 +201,6 @@ Email Content:
         raise
 
 def extract_via_ollama(sender: str, subject: str, body: str, model_name: str) -> Optional[ExtractedJobDetails]:
-    """Sends email to active local Ollama model."""
     prompt = f"""Sender: {sender}
 Subject: {subject}
 
@@ -251,9 +243,6 @@ Email Content:
         raise
 
 def extract_job_details(sender: str, subject: str, body: str) -> Optional[ExtractedJobDetails]:
-    """
-    Main extraction pipeline. Routes automatically between Local Ollama and Custom Cloud API.
-    """
     config = get_ai_config()
     if config["ai_provider"] == "custom_api":
         return extract_via_custom_api(sender, subject, body, config)

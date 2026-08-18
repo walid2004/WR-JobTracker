@@ -134,7 +134,6 @@ function getAvatar(name) {
   return (clean.slice(0, 2) || 'WR').toUpperCase();
 }
 
-// Application Logo
 function AppLogo({ size = 20, className = "" }) {
   return (
     <svg
@@ -157,7 +156,6 @@ function AppLogo({ size = 20, className = "" }) {
   );
 }
 
-// Mobbin-style Company Logo with Fallback
 function CompanyLogo({ name, logoUrl, size = 40 }) {
   const [imgError, setImgError] = useState(false);
 
@@ -186,7 +184,6 @@ function CompanyLogo({ name, logoUrl, size = 40 }) {
 }
 
 export default function App() {
-  // 1. All State Declarations
   const [applications, setApplications] = useState([]);
   const [stats, setStats] = useState({
     total_applications: 0,
@@ -199,12 +196,10 @@ export default function App() {
     response_rate_percent: 0
   });
 
-  // Theme State (Light default)
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('wr_theme') || 'light';
   });
 
-  // Settings & AI Configuration State
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [aiProvider, setAiProvider] = useState('local'); // 'local' | 'custom_api'
   const [activeModel, setActiveModel] = useState('qwen3:8b');
@@ -218,21 +213,17 @@ export default function App() {
   const [scanDepth, setScanDepth] = useState(50);
   const [autoSyncInterval, setAutoSyncInterval] = useState(0);
 
-  // Live Next Scan Countdown (seconds)
   const [countdownSeconds, setCountdownSeconds] = useState(0);
 
-  // Email Connection State
   const [emailAccount, setEmailAccount] = useState(null);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [isTestingConnection, setIsTestingConnection] = useState(false);
 
-  // Sync Progress State
   const [syncProgress, setSyncProgress] = useState(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const syncPollRef = useRef(null);
 
-  // UI state
   const searchInputRef = useRef(null);
   const [selectedApp, setSelectedApp] = useState(null);
   const [drawerTab, setDrawerTab] = useState('timeline'); // 'timeline' | 'insights'
@@ -241,25 +232,21 @@ export default function App() {
   const [notification, setNotification] = useState(null);
   const [lastExtractionResult, setLastExtractionResult] = useState(null);
 
-  // Manual Card Form
   const [newCompany, setNewCompany] = useState('');
   const [newTitle, setNewTitle] = useState('');
   const [newRefId, setNewRefId] = useState('');
   const [newLocation, setNewLocation] = useState('');
   const [newStatus, setNewStatus] = useState('APPLIED');
 
-  // Custom Raw Email Form (Inside Settings Modal)
   const [rawSender, setRawSender] = useState(PRESET_EMAILS[0].sender);
   const [rawSubject, setRawSubject] = useState(PRESET_EMAILS[0].subject);
   const [rawBody, setRawBody] = useState(PRESET_EMAILS[0].body);
   const [rawThreadId, setRawThreadId] = useState(PRESET_EMAILS[0].threadId);
 
-  // Email Credentials Form
   const [inputEmail, setInputEmail] = useState('');
   const [inputPassword, setInputPassword] = useState('');
   const [inputServer, setInputServer] = useState('imap.gmail.com');
 
-  // 2. Helper & Data Fetching Functions
   const showToast = (msg, type = 'info') => {
     setNotification({ msg, type });
     setTimeout(() => setNotification(null), 5000);
@@ -424,7 +411,6 @@ export default function App() {
     }
   };
 
-  // 1-Click Sync Trigger
   const handleTriggerSync = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
@@ -446,7 +432,6 @@ export default function App() {
     }
   };
 
-  // 3. Effects
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     document.body.setAttribute('data-theme', theme);
@@ -499,7 +484,6 @@ export default function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Poll sync progress if active - and refresh applications dynamically
   useEffect(() => {
     if (isSyncing) {
       syncPollRef.current = setInterval(async () => {
@@ -535,7 +519,6 @@ export default function App() {
     };
   }, [isSyncing]);
 
-  // Fast Test Connection (<1s)
   const handleTestConnection = async () => {
     if (!inputEmail || !inputPassword) {
       setTestResult({ success: false, error: 'Please enter both your email address and 16-character App Password.' });
@@ -557,7 +540,7 @@ export default function App() {
       if (res.ok && data.success) {
         setTestResult({
           success: true,
-          message: `✓ Connection Successful! Connected to ${data.email_address} on ${data.imap_server} (Found ${data.total_inbox_messages} emails in INBOX).`
+          message: ` Connection Successful! Connected to ${data.email_address} on ${data.imap_server} (Found ${data.total_inbox_messages} emails in INBOX).`
         });
       } else {
         setTestResult({ success: false, error: data.detail || 'Connection failed.' });
@@ -569,7 +552,6 @@ export default function App() {
     }
   };
 
-  // Save & Connect Email Account
   const handleSaveAndConnect = async (e) => {
     e.preventDefault();
     if (!inputEmail || !inputPassword) {
@@ -590,7 +572,7 @@ export default function App() {
       const data = await res.json();
       if (res.ok && data.success) {
         setEmailAccount(data.account);
-        setTestResult({ success: true, message: '✓ Account connected and saved successfully!' });
+        setTestResult({ success: true, message: ' Account connected and saved successfully!' });
         showToast(`Connected to ${inputEmail}!`, 'success');
         setTimeout(() => setIsEmailModalOpen(false), 1200);
       } else {
@@ -603,7 +585,6 @@ export default function App() {
     }
   };
 
-  // Disconnect Account
   const handleDisconnect = async () => {
     if (!window.confirm('Disconnect this email inbox?')) return;
     try {
@@ -618,8 +599,6 @@ export default function App() {
     }
   };
 
-
-  // Manual card creation
   const handleManualCreate = async (e) => {
     e.preventDefault();
     try {
@@ -649,12 +628,11 @@ export default function App() {
     }
   };
 
-  // Test Raw Email in Settings Modal
   const handleProcessCustomEmail = async (e) => {
     e.preventDefault();
     setIsSyncing(true);
     setLastExtractionResult(null);
-    setSyncProgress({ is_syncing: true, current_step: `⚡ Testing with ${activeModel}...` });
+    setSyncProgress({ is_syncing: true, current_step: ` Testing with ${activeModel}...` });
     try {
       const res = await fetch(`${API_BASE}/process-email`, {
         method: 'POST',
@@ -757,7 +735,7 @@ export default function App() {
 
   return (
     <div className="app-container">
-      {/* Toast Notification */}
+      {}
       {notification && (
         <div style={{
           position: 'fixed',
@@ -780,7 +758,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Real-Time Live Sync Status Banner */}
+      {}
       {isSyncing && syncProgress && (
         <div className="sync-banner">
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -795,7 +773,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Top Navbar */}
+      {}
       <header className="navbar">
         <div className="brand">
           <div className="brand-icon">
@@ -810,7 +788,7 @@ export default function App() {
         </div>
 
         <div className="nav-actions">
-          {/* Email Account Connection Status Badge */}
+          {}
           {emailAccount ? (
             <div
               className="ai-status-pill"
@@ -831,7 +809,7 @@ export default function App() {
             </button>
           )}
 
-          {/* 1-Click Sync Button */}
+          {}
           {emailAccount && (
             <button
               className="btn btn-primary"
@@ -843,7 +821,7 @@ export default function App() {
             </button>
           )}
 
-          {/* Settings & AI Studio Button */}
+          {}
           <button
             className="btn-icon"
             onClick={() => setIsSettingsOpen(true)}
@@ -852,7 +830,7 @@ export default function App() {
             <Settings size={16} />
           </button>
 
-          {/* New Card Button */}
+          {}
           <button
             className="btn btn-accent"
             onClick={() => setIsAddModalOpen(true)}
@@ -863,7 +841,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* Stats Data Strip (Structured, High Density) */}
+      {}
       <section className="stats-banner">
         <div className="stat-card">
           <div className="stat-info">
@@ -903,7 +881,7 @@ export default function App() {
         </div>
       </section>
 
-      {/* Toolbar / Search */}
+      {}
       <div className="toolbar">
         <div className="search-input-wrapper">
           <Search size={14} className="search-icon" />
@@ -938,7 +916,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Kanban Board */}
+      {}
       <main className="kanban-board">
         {COLUMNS.map((col) => {
           const colApps = filteredApps.filter((a) => a && col.statuses.includes(a.status));
@@ -960,7 +938,7 @@ export default function App() {
                   >
                     <div className="card-top">
                       <div className="company-badge-group">
-                        {/* High-Res Logo Badge */}
+                        {}
                         <CompanyLogo name={app.company_name} logoUrl={app.logo_url} size={38} />
                         <div>
                           <div className="company-name">{app.company_name || 'Unknown Company'}</div>
@@ -1010,7 +988,7 @@ export default function App() {
         })}
       </main>
 
-      {/* Application Details Drawer with Company Intelligence */}
+      {}
       {selectedApp && (
         <div className="drawer-backdrop" onClick={() => setSelectedApp(null)}>
           <div className="drawer-content" onClick={(e) => e.stopPropagation()}>
@@ -1028,7 +1006,7 @@ export default function App() {
             </div>
 
             <div className="drawer-body">
-              {/* Drawer Navigation Tabs */}
+              {}
               <div className="drawer-tabs">
                 <button
                   className={`drawer-tab ${drawerTab === 'timeline' ? 'active' : ''}`}
@@ -1044,7 +1022,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Status Switcher */}
+              {}
               <div className="form-group">
                 <label className="form-label">Application Status</label>
                 <select
@@ -1062,7 +1040,7 @@ export default function App() {
                 </select>
               </div>
 
-              {/* Action Required Banner */}
+              {}
               {selectedApp.action_required && (
                 <div className="action-alert" style={{ fontSize: '0.85rem', padding: '12px 14px' }}>
                   <AlertCircle size={18} style={{ flexShrink: 0 }} />
@@ -1078,7 +1056,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB 1: Email Timeline */}
+              {}
               {drawerTab === 'timeline' && (
                 <div className="timeline-section">
                   <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
@@ -1115,10 +1093,10 @@ export default function App() {
                 </div>
               )}
 
-              {/* TAB 2: Company Intelligence & Past Applications */}
+              {}
               {drawerTab === 'insights' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Company Metrics Grid */}
+                  {}
                   <div className="insights-grid">
                     <div className="insight-metric-box">
                       <span className="insight-metric-label">Total Applied</span>
@@ -1147,7 +1125,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Other Roles Applied at this Company */}
+                  {}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
                     <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
                       Other Roles Applied at {selectedApp.company_name} ({selectedApp.company_insights?.other_applications?.length || 0})
@@ -1185,7 +1163,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* Danger Zone */}
+              {}
               <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
                 <button
                   className="btn btn-danger"
@@ -1201,7 +1179,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Consolidated Settings & AI Studio Modal */}
+      {}
       {isSettingsOpen && (
         <div className="modal-backdrop" onClick={() => setIsSettingsOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1212,7 +1190,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* 0. Theme Appearance */}
+            {}
             <div className="form-group">
               <label className="form-label">
                 Interface Appearance
@@ -1237,13 +1215,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* 1. Model Provider Switcher */}
+            {}
             <div className="form-group">
               <label className="form-label">
                 AI Engine &amp; Extraction Model
               </label>
               
-              {/* Provider Segmented Toggle */}
+              {}
               <div className="provider-toggle-group" style={{ marginBottom: '8px' }}>
                 <button
                   type="button"
@@ -1269,7 +1247,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Local Ollama Options */}
+              {}
               {aiProvider === 'local' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <select
@@ -1293,7 +1271,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* Cloud API / OpenAI Compatible Options */}
+              {}
               {aiProvider === 'custom_api' && (
                 <div style={{
                   display: 'flex',
@@ -1304,7 +1282,7 @@ export default function App() {
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border-subtle)'
                 }}>
-                  {/* Preset Selector */}
+                  {}
                   <div>
                     <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>
                       Quick Cloud Presets:
@@ -1326,7 +1304,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Endpoint URL */}
+                  {}
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '0.7rem' }}>
                       API Base URL / Endpoint
@@ -1340,7 +1318,7 @@ export default function App() {
                     />
                   </div>
 
-                  {/* API Token / Key */}
+                  {}
                   <div className="form-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <label className="form-label" style={{ fontSize: '0.7rem' }}>
@@ -1376,7 +1354,7 @@ export default function App() {
                     </span>
                   </div>
 
-                  {/* Model Name */}
+                  {}
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '0.7rem' }}>
                       Model Identifier
@@ -1390,7 +1368,7 @@ export default function App() {
                     />
                   </div>
 
-                  {/* Test Result Banner if exists */}
+                  {}
                   {customApiTestResult && (
                     <div style={{
                       padding: '8px 10px',
@@ -1413,7 +1391,7 @@ export default function App() {
                     </div>
                   )}
 
-                  {/* Action Buttons */}
+                  {}
                   <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
                     <button
                       type="button"
@@ -1444,7 +1422,7 @@ export default function App() {
               )}
             </div>
 
-            {/* 2. Scan Depth Dial */}
+            {}
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <label className="form-label">
@@ -1467,7 +1445,7 @@ export default function App() {
               />
             </div>
 
-            {/* 3. Auto-Sync Interval */}
+            {}
             <div className="form-group">
               <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <Timer size={14} style={{ color: '#10b981' }} />
@@ -1486,7 +1464,7 @@ export default function App() {
               </select>
             </div>
 
-            {/* 4. AI Parser Sandbox Test */}
+            {}
             <div style={{
               background: 'var(--bg-card)',
               border: '1px solid var(--border-subtle)',
@@ -1497,7 +1475,7 @@ export default function App() {
               gap: '0.85rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}>⚡ Test AI Parser Sandbox</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 800 }}> Test AI Parser Sandbox</span>
                 <div style={{ display: 'flex', gap: '4px' }}>
                   {PRESET_EMAILS.map((p, idx) => (
                     <button
@@ -1551,7 +1529,7 @@ export default function App() {
                     fontSize: '0.75rem'
                   }}>
                     <div style={{ color: '#60a5fa', fontWeight: 700, marginBottom: '4px' }}>
-                      ✓ Parsed Status: {lastExtractionResult.status} ({lastExtractionResult.company_name})
+                       Parsed Status: {lastExtractionResult.status} ({lastExtractionResult.company_name})
                     </div>
                     <pre style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)', overflowX: 'auto' }}>
                       {JSON.stringify(lastExtractionResult.extraction, null, 2)}
@@ -1566,7 +1544,7 @@ export default function App() {
               </form>
             </div>
 
-            {/* Danger Zone: Reset Database */}
+            {}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px solid var(--border-subtle)' }}>
               <button
                 type="button"
@@ -1589,7 +1567,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Connect Email Modal */}
+      {}
       {isEmailModalOpen && (
         <div className="modal-backdrop" onClick={() => setIsEmailModalOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
@@ -1631,7 +1609,7 @@ export default function App() {
               }}>
                 <div>
                   <div style={{ fontSize: '0.875rem', fontWeight: 800, color: '#10b981' }}>
-                    ● Connected: {emailAccount.email_address}
+                     Connected: {emailAccount.email_address}
                   </div>
                   <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                     Server: {emailAccount.imap_server} • Total Synced: {emailAccount.total_synced_cards} cards
@@ -1713,7 +1691,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Manual Application Modal */}
+      {}
       {isAddModalOpen && (
         <div className="modal-backdrop" onClick={() => setIsAddModalOpen(false)}>
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>

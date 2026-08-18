@@ -84,7 +84,6 @@ def is_job_alert_or_newsletter(sender: str, subject: str, body: str) -> bool:
 
     return False
 
-# Global Sync Progress State
 class SyncTracker:
     def __init__(self):
         self.is_syncing = False
@@ -121,7 +120,7 @@ class SyncTracker:
         if cards is not None:
             self.cards_updated = cards
 
-    def finish(self, message="Sync complete!", early_stopped=False):
+    def finish(self, message="Sync complete", early_stopped=False):
         self.is_syncing = False
         self.current_step = message
         self.early_stopped = early_stopped
@@ -149,7 +148,6 @@ class SyncTracker:
 
 tracker = SyncTracker()
 
-# --- Auto-Sync Background Scheduler ---
 AUTO_SYNC_INTERVAL_MINUTES = 0
 _auto_sync_timer = None
 
@@ -305,7 +303,7 @@ def test_imap_credentials(imap_server: str, email_address: str, password: str) -
 
         return {
             "success": True,
-            "message": f"Successfully connected to {clean_email}!",
+            "message": f"Successfully connected to {clean_email}",
             "email_address": clean_email,
             "imap_server": imap_server,
             "total_inbox_messages": total_msgs
@@ -317,7 +315,7 @@ def test_imap_credentials(imap_server: str, email_address: str, password: str) -
                 "success": False,
                 "error": (
                     "Authentication Failed. For Gmail:\n"
-                    "1. You must use a 16-character Google App Password (not your normal Google account password).\n"
+                    "1. Use a 16-character Google App Password.\n"
                     "2. Generate one at https://myaccount.google.com/apppasswords\n"
                     "3. Ensure IMAP is enabled in Gmail Settings > Forwarding and POP/IMAP."
                 )
@@ -386,19 +384,16 @@ def _sync_imap_worker(imap_server: str, email_address: str, password: str, max_e
 
                 body = extract_email_body(msg)
 
-                # 1. Drop job alerts & newsletters
                 if is_job_alert_or_newsletter(sender, subject, body):
                     tracker.update(f"Skipping alert ({checked}/{len(recent_ids)})", checked=checked)
                     continue
 
-                # 2. Positive Keyword Check
                 combined_text = f"{subject} {body} {sender}".lower()
                 is_candidate = any(kw in combined_text for kw in positive_keywords)
                 if not is_candidate:
                     tracker.update(f"Inspecting email {checked}/{len(recent_ids)}...", checked=checked)
                     continue
 
-                # 3. Checkpoint & Deduplication
                 if db.is_email_already_recorded(message_id, subject):
                     consecutive_already_synced += 1
                     tracker.update(f"Already synced: '{subject[:28]}...' ({checked}/{len(recent_ids)})", checked=checked)
@@ -406,16 +401,15 @@ def _sync_imap_worker(imap_server: str, email_address: str, password: str, max_e
                         mail.close()
                         mail.logout()
                         db.update_email_account_status(clean_email, "CONNECTED", None, cards_updated)
-                        tracker.finish(f"✓ Checkpoint reached: Older emails already synced! Scanned {checked} emails, updated {cards_updated} cards.", early_stopped=True)
+                        tracker.finish(f"Checkpoint reached. Scanned {checked} emails, updated {cards_updated} cards.", early_stopped=True)
                         return
                     continue
                 else:
                     consecutive_already_synced = 0
 
-                # 4. Extract with active local AI model
                 active_m = extractor.get_active_model()
                 tracker.update(
-                    f"⚡ Extracting with {active_m}: '{subject[:30]}...' ({checked}/{len(recent_ids)})",
+                    f"Extracting with {active_m}: '{subject[:30]}...' ({checked}/{len(recent_ids)})",
                     email_subject=subject,
                     checked=checked
                 )
@@ -443,7 +437,7 @@ def _sync_imap_worker(imap_server: str, email_address: str, password: str, max_e
                     if match_res.is_job_related:
                         cards_updated += 1
                         tracker.update(
-                            f"✓ Logged Card for '{extracted.company_name}'!",
+                            f"Logged card for '{extracted.company_name}'",
                             checked=checked,
                             cards=cards_updated
                         )
@@ -456,7 +450,7 @@ def _sync_imap_worker(imap_server: str, email_address: str, password: str, max_e
         mail.logout()
 
         db.update_email_account_status(clean_email, "CONNECTED", None, cards_updated)
-        tracker.finish(f"Sync complete! Scanned {checked} emails, updated {cards_updated} job cards.")
+        tracker.finish(f"Sync complete. Scanned {checked} emails, updated {cards_updated} job cards.")
 
     except Exception as e:
         logger.error(f"IMAP Sync Worker Error: {e}")

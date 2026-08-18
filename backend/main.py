@@ -23,7 +23,7 @@ class ImapCredentialsRequest(BaseModel):
 
 app = FastAPI(
     title="WR JobTracker API",
-    description="Local AI-powered Job Application Tracking Engine (Mobbin Design)",
+    description="Local AI-powered Job Application Tracking Engine",
     version="1.3.0"
 )
 
@@ -38,7 +38,6 @@ app.add_middleware(
 @app.on_event("startup")
 def on_startup():
     db.init_db()
-    # Restore auto-sync interval
     saved_interval = db.get_setting("auto_sync_interval", "0")
     try:
         email_fetcher.set_auto_sync_interval(int(saved_interval))
@@ -61,7 +60,6 @@ def health_check():
 
 @app.get("/api/models")
 def list_models():
-    """Lists all downloaded models in local Ollama and the active model."""
     return {
         "active_model": extractor.get_active_model(),
         "available_models": extractor.get_installed_ollama_models()
@@ -72,7 +70,6 @@ class SetModelRequest(BaseModel):
 
 @app.post("/api/models/active")
 def change_active_model(req: SetModelRequest):
-    """Dynamically switches the active Ollama model."""
     updated = extractor.set_active_model(req.model_name)
     return {"success": True, "active_model": updated}
 
@@ -83,7 +80,6 @@ class TestCustomApiRequest(BaseModel):
 
 @app.post("/api/models/test-custom-api")
 def test_custom_api(req: TestCustomApiRequest):
-    """Verifies that the custom OpenAI/GitHub Models API endpoint and token work properly."""
     test_config = {
         "custom_api_url": req.api_url,
         "custom_api_key": req.api_key or "",
@@ -105,7 +101,7 @@ def test_custom_api(req: TestCustomApiRequest):
             }
         return {
             "success": True,
-            "message": f"Successfully connected to {req.model_name}! Response parsed in {elapsed}s.",
+            "message": f"Successfully connected to {req.model_name}. Response parsed in {elapsed}s.",
             "extracted_sample": res.model_dump(),
             "elapsed": elapsed
         }
@@ -171,11 +167,8 @@ def update_app_settings(req: SettingsRequest):
         }
     }
 
-# --- Email Account Management & Live Sync ---
-
 @app.get("/api/email/account")
 def get_email_account():
-    """Returns currently saved email connection status."""
     account = db.get_active_email_account()
     if not account:
         return {"connected": False, "account": None}
@@ -183,7 +176,6 @@ def get_email_account():
 
 @app.post("/api/email/test-connection")
 def test_connection(req: ImapCredentialsRequest):
-    """Performs an instant handshake test to verify email credentials."""
     if not req.email_address or not req.password:
         raise HTTPException(status_code=400, detail="Please provide both email_address and password.")
     res = email_fetcher.test_imap_credentials(
@@ -197,7 +189,6 @@ def test_connection(req: ImapCredentialsRequest):
 
 @app.post("/api/email/connect")
 def connect_and_save_account(req: ImapCredentialsRequest):
-    """Tests connection, saves credentials locally in SQLite, and connects."""
     if not req.email_address or not req.password:
         raise HTTPException(status_code=400, detail="Please provide both email_address and password.")
     
@@ -219,19 +210,17 @@ def connect_and_save_account(req: ImapCredentialsRequest):
     )
     return {
         "success": True,
-        "message": f"Connected to {req.email_address} successfully!",
+        "message": f"Connected to {req.email_address} successfully",
         "account": db.get_active_email_account()
     }
 
 @app.post("/api/email/disconnect")
 def disconnect_account():
-    """Disconnects saved email account."""
     db.disconnect_email_account()
     return {"success": True, "message": "Email account disconnected."}
 
 @app.post("/api/sync-start")
 def start_sync(req: Optional[ImapCredentialsRequest] = None):
-    """Triggers background sync with real-time progress tracking."""
     if email_fetcher.tracker.is_syncing:
         return {"success": True, "message": "Sync already in progress.", "progress": email_fetcher.tracker.to_dict()}
     
@@ -272,10 +261,7 @@ def start_sync(req: Optional[ImapCredentialsRequest] = None):
 
 @app.get("/api/sync-progress")
 def get_sync_progress():
-    """Poll endpoint to get real-time email sync progress."""
     return email_fetcher.tracker.to_dict()
-
-# --- Applications & Cards ---
 
 @app.get("/api/applications")
 def list_applications():
@@ -329,10 +315,6 @@ def delete_application(app_id: int):
 
 @app.post("/api/process-email", response_model=ProcessEmailResponse)
 def process_single_email(email_input: RawEmailInput):
-    """
-    Scans raw email text using active local model, extracts details, 
-    and links to existing application or creates new card.
-    """
     extracted = extractor.extract_job_details(
         sender=email_input.sender,
         subject=email_input.subject,
@@ -342,7 +324,7 @@ def process_single_email(email_input: RawEmailInput):
     if not extracted:
         raise HTTPException(
             status_code=500, 
-            detail=f"Failed to extract job details via Ollama ({extractor.get_active_model()})."
+            detail=f"Failed to extract job details via {extractor.get_active_model()}."
         )
     
     result = matchmaker.process_and_match_email(email_input, extracted)

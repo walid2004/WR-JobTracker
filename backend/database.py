@@ -35,18 +35,15 @@ def extract_domain_from_email(email_str: Optional[str]) -> Optional[str]:
     match = re.search(r'@([a-zA-Z0-9.\-_]+)', email_str)
     if match:
         domain = match.group(1).lower().strip()
-        # Drop common mail forwarder domains if we can
         if domain not in ("gmail.com", "yahoo.com", "outlook.com", "hotmail.com", "icloud.com"):
             return domain
     return None
 
 def get_logo_url(company_name: str, company_slug: str, domain: Optional[str] = None) -> str:
-    """Builds high-resolution Google Favicon logo URL from domain or company slug."""
     clean_domain = domain
     if not clean_domain:
         clean_domain = KNOWN_DOMAINS.get(company_slug) or KNOWN_DOMAINS.get(company_name.lower().strip())
     if not clean_domain:
-        # Fallback heuristic: slug.com or slug.de
         clean_domain = f"{company_slug}.com"
     return f"https://www.google.com/s2/favicons?domain={clean_domain}&sz=128"
 
@@ -59,7 +56,6 @@ def init_db():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Table 1: Applications
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS applications (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,7 +76,6 @@ def init_db():
     );
     """)
 
-    # Table 2: Email Events
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS email_events (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,7 +93,6 @@ def init_db():
     );
     """)
 
-    # Table 3: Email Accounts
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS email_accounts (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,7 +107,6 @@ def init_db():
     );
     """)
 
-    # Table 4: User App Settings
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS app_settings (
         key TEXT PRIMARY KEY,
@@ -121,14 +114,12 @@ def init_db():
     );
     """)
 
-    # Indexes
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_apps_slug ON applications(company_slug);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_apps_ref_id ON applications(job_reference_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_thread ON email_events(email_thread_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_app_id ON email_events(application_id);")
     cursor.execute("CREATE INDEX IF NOT EXISTS idx_events_msg_id ON email_events(email_message_id);")
 
-    # Ensure company_domain column exists
     try:
         cursor.execute("ALTER TABLE applications ADD COLUMN company_domain TEXT;")
     except Exception:
@@ -136,8 +127,6 @@ def init_db():
 
     conn.commit()
     conn.close()
-
-# --- App Settings (Auto-sync, Depth, etc.) ---
 
 def get_setting(key: str, default: str = "") -> str:
     conn = get_db_connection()
@@ -153,8 +142,6 @@ def set_setting(key: str, value: str):
     cursor.execute("INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)", (key, str(value)))
     conn.commit()
     conn.close()
-
-# --- Email Deduplication Check ---
 
 def is_email_already_recorded(email_message_id: Optional[str], subject: str, application_id: Optional[int] = None) -> bool:
     conn = get_db_connection()
@@ -173,8 +160,6 @@ def is_email_already_recorded(email_message_id: Optional[str], subject: str, app
 
     conn.close()
     return False
-
-# --- Email Account Operations ---
 
 def get_active_email_account() -> Optional[Dict[str, Any]]:
     conn = get_db_connection()
@@ -229,16 +214,7 @@ def disconnect_email_account() -> bool:
     conn.close()
     return True
 
-# --- Company Analytics & Multi-Job Insights ---
-
 def get_company_insights(company_slug: str, current_app_id: int) -> Dict[str, Any]:
-    """
-    Computes company-level intelligence:
-    - Total roles applied at this company
-    - Other applications for this company
-    - Company-specific response rate & rejection rate
-    - Average turnaround time (days)
-    """
     conn = get_db_connection()
     cursor = conn.cursor()
 
@@ -255,7 +231,6 @@ def get_company_insights(company_slug: str, current_app_id: int) -> Dict[str, An
     total_apps = len(apps)
     other_apps = [a for a in apps if a["id"] != current_app_id]
 
-    # Metrics
     responded_count = sum(1 for a in apps if a["status"] != "APPLIED")
     offers_count = sum(1 for a in apps if a["status"] == "OFFER_RECEIVED")
     rejections_count = sum(1 for a in apps if a["status"] in ("REJECTED", "ARCHIVED"))
@@ -263,7 +238,6 @@ def get_company_insights(company_slug: str, current_app_id: int) -> Dict[str, An
 
     company_response_rate = round((responded_count / total_apps * 100), 1) if total_apps > 0 else 0.0
 
-    # Calculate average turnaround time from first email to last update for responded cards
     days_list = []
     for a in apps:
         if a["status"] != "APPLIED" and a.get("created_at") and a.get("updated_at"):
@@ -291,8 +265,6 @@ def get_company_insights(company_slug: str, current_app_id: int) -> Dict[str, An
         "avg_turnaround_days": avg_turnaround_days,
         "other_applications": other_apps
     }
-
-# --- Application Operations ---
 
 def get_all_applications() -> List[Dict[str, Any]]:
     conn = get_db_connection()
@@ -325,13 +297,11 @@ def get_application_by_id(app_id: int) -> Optional[Dict[str, Any]]:
     app_data = dict(row)
     app_data["logo_url"] = get_logo_url(app_data["company_name"], app_data["company_slug"], app_data.get("company_domain"))
     
-    # Fetch timeline
     cursor.execute("SELECT * FROM email_events WHERE application_id = ? ORDER BY received_at DESC", (app_id,))
     events = cursor.fetchall()
     app_data["timeline"] = [dict(e) for e in events]
     conn.close()
 
-    # Attach Company Insights & Past Applications
     app_data["company_insights"] = get_company_insights(app_data["company_slug"], app_id)
 
     return app_data
