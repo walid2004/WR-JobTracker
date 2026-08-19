@@ -119,8 +119,8 @@ Local-first, AI-driven Applicant Tracking System (ATS) that synchronizes with yo
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/walid2004/WR-JobApplicant.git
-cd WR-JobApplicant
+git clone https://github.com/walid2004/WR-JobTracker.git
+cd WR-JobTracker
 ```
 
 ### 2. Backend Setup
